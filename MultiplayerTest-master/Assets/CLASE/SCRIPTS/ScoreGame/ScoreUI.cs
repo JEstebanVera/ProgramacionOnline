@@ -24,7 +24,11 @@ public class ScoreUI : MonoBehaviour
         if (scores.TryGet(localPlayer, out int myScore))
             myScoreText.text = $"Yo: {myScore}";
         else
+        {
             myScoreText.text = "Yo: 0";
+            Debug.Log("No se pudo obtener el puntaje");
+        }
+            
 
         // Puntaje del rival 
         enemyScoreText.text = "Rival: 0";
