@@ -22,6 +22,23 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
 
     [SerializeField] private NetworkPrefabRef scoreManagerPrefab; // aqui declaramos el prefab del scoremanager para spawnearlo
 
+    List<SessionInfo> availableSessions = new List<SessionInfo>();
+
+    public event Action onSessionListUpdated;
+    public static PhotonManager _PhotonManager;
+
+    private void Start()
+    {
+        if(_PhotonManager == null)
+        {
+            _PhotonManager = this;
+        }
+        else
+        {
+            Destroy(this);
+        }
+    }
+
 
     #region Metodos de Photon
     /// <summary>
