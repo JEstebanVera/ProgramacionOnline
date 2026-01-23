@@ -1,7 +1,11 @@
+using Fusion;
+using System;
 using UnityEngine;
 
 public class LobbyManager : MonoBehaviour
 {
+    [SerializeField] private Transform viewportContent;
+    [SerializeField] private GameObject lobbyPrefab;
     private void Start()
     {
         PhotonManager._PhotonManager.onSessionListUpdated += DestroyCanvasContent;
@@ -10,11 +14,16 @@ public class LobbyManager : MonoBehaviour
 
     public void DestroyCanvasContent()
     {
-
     }
 
     public void UpdateSessionCanvas()
     {
+        DestroyCanvasContent();
 
+        foreach(SessionInfo session in PhotonManager._PhotonManager.availableSessions)
+        {
+            GameObject sessionInstance = Instantiate(lobbyPrefab, viewportContent);
+            sessionInstance.GetComponent<SessionEntry>().SetInfo(session);
+        }
     }
 }

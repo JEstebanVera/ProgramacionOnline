@@ -22,7 +22,7 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
 
     [SerializeField] private NetworkPrefabRef scoreManagerPrefab; // aqui declaramos el prefab del scoremanager para spawnearlo
 
-    List<SessionInfo> availableSessions = new List<SessionInfo>();
+    public List<SessionInfo> availableSessions = new List<SessionInfo>();
 
     public event Action onSessionListUpdated;
     public static PhotonManager _PhotonManager;
@@ -105,6 +105,11 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
 
         input.Set(data);
     }
+    public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList)
+    {
+        availableSessions = sessionList;
+        onSessionListUpdated?.Invoke();
+    }
 
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input)
     {
@@ -160,9 +165,6 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
     {
     }
 
-    public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList)
-    {
-    }
 
     public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason)
     {
