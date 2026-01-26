@@ -14,6 +14,11 @@ public class LobbyManager : MonoBehaviour
 
     public void DestroyCanvasContent()
     {
+        for (int i = viewportContent.childCount - 1; i >= 0; i--)
+        {
+            // no conocia el getchild pero creo q asi queda 
+            Destroy(viewportContent.GetChild(i).gameObject);
+        }
     }
 
     public void UpdateSessionCanvas()
