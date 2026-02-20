@@ -1,42 +1,53 @@
-using UnityEngine;
+using System;
+using System.Collections.Generic;
 using Fusion;
 using Fusion.Sockets;
-using System.Collections.Generic;
-using UnityEngine.SceneManagement;
-using System;
-using Unity.Mathematics;
+using UnityEngine;
 using UnityEngine.Events;
-
+using UnityEngine.SceneManagement;
+using Random = UnityEngine.Random;
 
 public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
 {
 
+    
     [SerializeField] private NetworkPrefabRef prefab; // Referencia al prefab
     [SerializeField] private NetworkRunner runner; // Runner es quien se encarga de enviar y recibir informacion, es tu medio de comunicacion con el servidor
-    [SerializeField] NetworkSceneManagerDefault sceneManager;
     [SerializeField] private Transform[] spawnPoint;
-
+    [SerializeField] NetworkSceneManagerDefault sceneManager;
     [SerializeField] Dictionary<PlayerRef, NetworkObject> players = new Dictionary<PlayerRef, NetworkObject>(); // PlayerRef es el ID de nuestro jugador en la red, NetwokrObject es el prefab/objeto de nuestro jugador
-
     [SerializeField] UnityEvent onPlayerJoinedToGame; // Los UnityEvents son llamadas que se hacen al invocar un evento
-
-    [SerializeField] private NetworkPrefabRef scoreManagerPrefab; // aqui declaramos el prefab del scoremanager para spawnearlo
 
     public List<SessionInfo> availableSessions = new List<SessionInfo>();
 
     public event Action onSessionListUpdated;
     public static PhotonManager _PhotonManager;
+    public bool isHost;
 
-    private void Start()
+    [SerializeField] GameObject LobbiesPanel;
+    [SerializeField] GameObject Panel_StartButtons;
+
+
+    private void Awake()
     {
-        if(_PhotonManager == null)
+        if (_PhotonManager == null)
         {
             _PhotonManager = this;
         }
         else
         {
-            Destroy(this);
+            Destroy(this.gameObject);
         }
+    }
+
+    private void Start()
+    {
+        runner.AddCallbacks(this);
+    }
+
+    public async void JoinLobby()
+    {
+        await runner.JoinSessionLobby(SessionLobby.ClientServer);
     }
 
 
@@ -53,39 +64,22 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
     /// </summary>
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
-        if (runner.IsServer)
+        if (runner.IsServer) // Unicamente la persona que tiene el host va a mandar a llamar este metodo. Esto es para que no haya instancias de mas
         {
-            // Spawnea el ScoreManager SOLO UNA VEZ
-            if (ScoreManager.Instance == null)
-            {
-                runner.Spawn(scoreManagerPrefab);
-                Debug.Log("ScoreManager realmente instanciado en el servidor.");
-            }
-
-            // Ahora sí spawneamos al jugador
-            int randomSpawn = UnityEngine.Random.Range(0, spawnPoint.Length);
-            NetworkObject networkPlayer = runner.Spawn(prefab,
-                                                        spawnPoint[randomSpawn].position,
-                                                        spawnPoint[randomSpawn].rotation,
-                                                        player);
-
-            players.Add(player, networkPlayer);
+            int randomSpawn = UnityEngine.Random.Range(0, spawnPoint.Length); // Consigo un spawn random de mi arreglo
+            NetworkObject networkPlayer = runner.Spawn(prefab, spawnPoint[randomSpawn].position, spawnPoint[randomSpawn].rotation, player);
+            players.Add(player, networkPlayer); // Agregamos al diccionario el id de el jugador y lo vinculamos con su prefab que acaba de instanciarse
         }
+        onPlayerJoinedToGame.Invoke(); // Invoca mi evento // Esto se pone afuera de el if para que a todo jugador que entre se le apague el canvas
 
-        // Inicializar UI
-        var ui = UnityEngine.Object.FindFirstObjectByType<ScoreUI>();
-        if (ui != null)
-            ui.Initialize(runner);
-
-        onPlayerJoinedToGame.Invoke();
+        LobbiesPanel.SetActive(false);
+        Panel_StartButtons.SetActive(false);
     }
-
 
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
     {
         if (players.TryGetValue(player, out NetworkObject networkPlayer)) // Si en mi diccionario existe a referencia a ese jugador, 
         {
-
             runner.Despawn(networkPlayer); // Elimino el objeto de el jugador de la escena
             players.Remove(player); // Lo elimino de mi diccionario
         }
@@ -96,7 +90,7 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
         // Creo un objeto de tipo NetworkInputData
         NetworkInputData data = new NetworkInputData()
         {
-            move = InputManager.Instance.GetMoveInput(),
+            move = InputManager.Instance.GetMoveInput() == null ? new Vector2(0, 0) : InputManager.Instance.GetMoveInput(),
             look = InputManager.Instance.GetMouseDelta(),
             isRunning = InputManager.Instance.WasRunInputPressed(),
             yRotation = Camera.main.transform.eulerAngles.y,
@@ -105,9 +99,19 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
 
         input.Set(data);
     }
+
+    /// <summary>
+    /// Este metodo se manda a llamar cada que un host inicia una nueva sesion
+    /// 
+    /// Esto solo actualiza tal cual una lista, pero List<> 
+    /// 
+    /// El parametro sessionList es una lista de sesiones, esta se actualiza cada vez que
+    /// se crea o se elimina una sesion.
+    /// </summary>
     public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList)
     {
-        availableSessions = sessionList;
+        Debug.Log("Sesiones activas: " + sessionList.Count);
+        availableSessions = sessionList; // Aqui guardo la lista de sesiones más reciente
         onSessionListUpdated?.Invoke();
     }
 
@@ -140,7 +144,6 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
     {
     }
 
-
     public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player)
     {
     }
@@ -165,7 +168,6 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
     {
     }
 
-
     public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason)
     {
     }
@@ -173,8 +175,6 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
     public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message)
     {
     }
-
-
 
     #endregion
 
@@ -190,14 +190,12 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
     /// NetworkSceneInfo guarda como se van a usar las escenas en mi juego
     /// Esta puede guardar la informacion de hasta 8 escenas
     /// </summary>
-    private async void StartGame(GameMode mode)
+    public async void CreateSession(string sessionName, int maxPlayers)
     {
-        runner.AddCallbacks(this);
-        runner.ProvideInput = true; // Esto nos dice que el runner recibira y mandara inputs
+        runner.ProvideInput = true;
 
-        var scene = SceneRef.FromIndex(0); // Guardame una referencia a la escena 0.
-
-        var sceneInfo = new NetworkSceneInfo(); // Creo una variable que me va a guardar las escenas que voy a usar, 
+        var scene = SceneRef.FromIndex(0);
+        var sceneInfo = new NetworkSceneInfo();
 
         if (scene.IsValid)
         {
@@ -206,25 +204,50 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
 
         await runner.StartGame(new StartGameArgs()
         {
-            GameMode = mode,
-            SessionName = "#0001", // Este nombre es el interno que yo como desarrollador necesito entender
+            GameMode = GameMode.Host,
+            SessionName = sessionName,
+            PlayerCount = maxPlayers,
             Scene = scene,
-            CustomLobbyName = "Official EA Europe", // Este es el que quiero mostrar
-            SceneManager = sceneManager
+            SceneManager = sceneManager,
+            IsVisible = true
         });
-
     }
 
-    public void StartGameAsHost()
+
+
+    public async void JoinSession(string sessionName)
     {
-        StartGame(GameMode.Host);
+        runner.ProvideInput = true; // Esto nos dice que el runner recibira y mandara inputs
+        var scene = SceneRef.FromIndex(0); // Guardame una referencia a la escena 0.
+        var sceneInfo = new NetworkSceneInfo(); // Creo una variable que me va a guardar las escenas que voy a usar, 
+        if (scene.IsValid)
+        {
+            sceneInfo.AddSceneRef(scene, LoadSceneMode.Additive);
+        }
+
+        await runner.StartGame(new StartGameArgs()
+        {
+            GameMode = GameMode.Client,
+            SessionName = sessionName, // Este nombre es el interno que yo como desarrollador necesito entender
+            Scene = scene,
+           SceneManager = sceneManager,
+            IsVisible = true
+        });
     }
 
-    public void StartGameAsClient()
+    private string RandomSessionName(int sessionNameLength)
     {
-        StartGame(GameMode.Client);
+        string caracteres = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+        string sessionName = "";
+
+        for(int i = 0; i < sessionNameLength; i++)
+        {
+            char randomChar = caracteres[UnityEngine.Random.Range(0,caracteres.Length)];
+            sessionName += randomChar; // "" + a = "a" // "a" = "a" + "k" = "ak"
+        }
+
+        return sessionName;
     }
 
+ 
 }
-
-

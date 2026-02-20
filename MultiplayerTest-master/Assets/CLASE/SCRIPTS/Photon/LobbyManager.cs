@@ -1,34 +1,46 @@
 using Fusion;
-using System;
 using UnityEngine;
 
+
+
+/// <summary>
+/// Este script es el que va a actualizar mi lista de sesiones
+/// en el canvas
+/// </summary>
 public class LobbyManager : MonoBehaviour
 {
+
     [SerializeField] private Transform viewportContent;
     [SerializeField] private GameObject lobbyPrefab;
-    private void Start()
+    [SerializeField] private GameObject warningMessage;
+
+    private void OnEnable()
     {
         PhotonManager._PhotonManager.onSessionListUpdated += DestroyCanvasContent;
         PhotonManager._PhotonManager.onSessionListUpdated += UpdateSessionCanvas;
     }
 
+    public void UpdateSessionCanvas()
+    {
+        Debug.Log("Creando sesiones: " + PhotonManager._PhotonManager.availableSessions.Count);
+        foreach(SessionInfo session in PhotonManager._PhotonManager.availableSessions)
+        {
+            GameObject sessionInstance = Instantiate(lobbyPrefab,viewportContent);
+            sessionInstance.GetComponent<SessionEntry>().SetInfo(session);
+        }
+    }
+
+    // Aqui deben destruir el contenido de el viewportContent
+    // Obligatorio: Usar for, foreach no
     public void DestroyCanvasContent()
     {
-        for (int i = viewportContent.childCount - 1; i >= 0; i--)
+        Debug.Log("Destoy Canvas");
+        warningMessage.SetActive(PhotonManager._PhotonManager.availableSessions.Count <= 0);
+
+        for (int i = 0; i < viewportContent.childCount; i++) 
         {
-            // no conocia el getchild pero creo q asi queda 
             Destroy(viewportContent.GetChild(i).gameObject);
         }
     }
 
-    public void UpdateSessionCanvas()
-    {
-        DestroyCanvasContent();
-
-        foreach(SessionInfo session in PhotonManager._PhotonManager.availableSessions)
-        {
-            GameObject sessionInstance = Instantiate(lobbyPrefab, viewportContent);
-            sessionInstance.GetComponent<SessionEntry>().SetInfo(session);
-        }
-    }
 }
