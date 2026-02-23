@@ -10,23 +10,21 @@ using Random = UnityEngine.Random;
 public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
 {
 
-    
+
     [SerializeField] private NetworkPrefabRef prefab; // Referencia al prefab
     [SerializeField] private NetworkRunner runner; // Runner es quien se encarga de enviar y recibir informacion, es tu medio de comunicacion con el servidor
-    [SerializeField] private Transform[] spawnPoint;
     [SerializeField] NetworkSceneManagerDefault sceneManager;
+    [SerializeField] private Transform[] spawnPoint;
+
     [SerializeField] Dictionary<PlayerRef, NetworkObject> players = new Dictionary<PlayerRef, NetworkObject>(); // PlayerRef es el ID de nuestro jugador en la red, NetwokrObject es el prefab/objeto de nuestro jugador
     [SerializeField] UnityEvent onPlayerJoinedToGame; // Los UnityEvents son llamadas que se hacen al invocar un evento
 
-    public List<SessionInfo> availableSessions = new List<SessionInfo>();
+    public List<SessionInfo> availableSessions = new List<SessionInfo>(); // Sesiones disponibles 
+    // Si esta lista tiene sesiones dentro, significa que hay sesiones disponibles, si esta vacia pues no hay sesiones
 
     public event Action onSessionListUpdated;
     public static PhotonManager _PhotonManager;
     public bool isHost;
-
-    [SerializeField] GameObject LobbiesPanel;
-    [SerializeField] GameObject Panel_StartButtons;
-
 
     private void Awake()
     {
@@ -72,8 +70,6 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
         }
         onPlayerJoinedToGame.Invoke(); // Invoca mi evento // Esto se pone afuera de el if para que a todo jugador que entre se le apague el canvas
 
-        LobbiesPanel.SetActive(false);
-        Panel_StartButtons.SetActive(false);
     }
 
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
@@ -190,13 +186,11 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
     /// NetworkSceneInfo guarda como se van a usar las escenas en mi juego
     /// Esta puede guardar la informacion de hasta 8 escenas
     /// </summary>
-    public async void CreateSession(string sessionName, int maxPlayers)
+    private async void StartGame(GameMode mode)
     {
-        runner.ProvideInput = true;
-
-        var scene = SceneRef.FromIndex(0);
-        var sceneInfo = new NetworkSceneInfo();
-
+        runner.ProvideInput = true; // Esto nos dice que el runner recibira y mandara inputs
+        var scene = SceneRef.FromIndex(0); // Guardame una referencia a la escena 0.
+        var sceneInfo = new NetworkSceneInfo(); // Creo una variable que me va a guardar las escenas que voy a usar, 
         if (scene.IsValid)
         {
             sceneInfo.AddSceneRef(scene, LoadSceneMode.Additive);
@@ -204,15 +198,13 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
 
         await runner.StartGame(new StartGameArgs()
         {
-            GameMode = GameMode.Host,
-            SessionName = sessionName,
-            PlayerCount = maxPlayers,
+            GameMode = mode,
+            SessionName = RandomSessionName(6), // Este nombre es el interno que yo como desarrollador necesito entender
             Scene = scene,
             SceneManager = sceneManager,
-            IsVisible = true
+            IsVisible = true,
         });
     }
-
 
 
     public async void JoinSession(string sessionName)
@@ -230,9 +222,19 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
             GameMode = GameMode.Client,
             SessionName = sessionName, // Este nombre es el interno que yo como desarrollador necesito entender
             Scene = scene,
-           SceneManager = sceneManager,
+            SceneManager = sceneManager,
             IsVisible = true
         });
+    }
+
+    public void StartGameAsHost()
+    {
+        StartGame(GameMode.Host);
+    }
+
+    public void StartGameAsClient()
+    {
+        StartGame(GameMode.Client);
     }
 
     private string RandomSessionName(int sessionNameLength)

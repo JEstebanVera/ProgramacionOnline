@@ -33,8 +33,6 @@ public class CreateLobbyUI : MonoBehaviour
         {
             maxPlayers = 10;
         }
-
-        PhotonManager._PhotonManager.CreateSession(lobbyName, maxPlayers);
     }
 }
 
