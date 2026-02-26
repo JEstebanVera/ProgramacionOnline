@@ -251,5 +251,28 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
         return sessionName;
     }
 
- 
+    public async void CreateCustomLobby(string sessionName, int maxPlayers)
+    {
+        runner.ProvideInput = true;
+
+        var scene = SceneRef.FromIndex(0);
+        var sceneInfo = new NetworkSceneInfo();
+
+        if (scene.IsValid)
+        {
+            sceneInfo.AddSceneRef(scene, LoadSceneMode.Additive);
+        }
+
+        await runner.StartGame(new StartGameArgs()
+        {
+            GameMode = GameMode.Host,
+            SessionName = sessionName,
+            PlayerCount = maxPlayers, 
+            Scene = scene,
+            SceneManager = sceneManager,
+            IsVisible = true
+        });
+    }
+
+
 }
