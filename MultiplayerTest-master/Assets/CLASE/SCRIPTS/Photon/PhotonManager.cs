@@ -6,6 +6,8 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 using Random = UnityEngine.Random;
+using System.Threading.Tasks;
+using UnityEngine.UI;
 
 public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
 {
@@ -25,6 +27,8 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
     public event Action onSessionListUpdated;
     public static PhotonManager _PhotonManager;
     public bool isHost;
+
+    [SerializeField] private Button createLobbyButton;
 
     private void Awake()
     {
@@ -46,6 +50,8 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
     public async void JoinLobby()
     {
         await runner.JoinSessionLobby(SessionLobby.ClientServer);
+        createLobbyButton.interactable = true;  
+        Debug.Log("CONECTADO");
     }
 
 
@@ -251,27 +257,24 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
         return sessionName;
     }
 
-    public async void CreateCustomLobby(string sessionName, int maxPlayers)
+    public async Task<bool> CreateCustomLobby(string sessionName, int maxPlayers)
     {
         runner.ProvideInput = true;
 
         var scene = SceneRef.FromIndex(0);
-        var sceneInfo = new NetworkSceneInfo();
 
-        if (scene.IsValid)
-        {
-            sceneInfo.AddSceneRef(scene, LoadSceneMode.Additive);
-        }
-
-        await runner.StartGame(new StartGameArgs()
+        var result = await runner.StartGame(new StartGameArgs()
         {
             GameMode = GameMode.Host,
             SessionName = sessionName,
-            PlayerCount = maxPlayers, 
+            PlayerCount = maxPlayers,
             Scene = scene,
             SceneManager = sceneManager,
-            IsVisible = true
+            IsVisible = true,
+            IsOpen = true
         });
+
+        return result.Ok;
     }
 
 

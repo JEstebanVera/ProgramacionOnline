@@ -5,13 +5,13 @@ using Fusion;
 
 public class CreateLobbyUI : MonoBehaviour
 {
-    [SerializeField] private TMP_InputField lobbyNameInput; // donde se pone el nombre del lobby
-    [SerializeField] private TMP_InputField maxPlayersInput; // donde se pone la cantidad maxima de jugadores
-    [SerializeField] private TMP_Text sessionName;
-    [SerializeField] private TMP_Text playerCount;
-    [SerializeField] private Button joinButton;
-    [SerializeField] private GameObject maxPlayersWarning; // la advertencia si supera 10 jugadores
-    public void CreateLobby()
+    [SerializeField] private TMP_InputField lobbyNameInput;
+    [SerializeField] private TMP_InputField maxPlayersInput;
+    [SerializeField] private GameObject maxPlayersWarning;
+
+    [SerializeField] private GameObject canvas1;
+    [SerializeField] private GameObject canvas2;
+    public async void CreateLobby()
     {
         string lobbyName = lobbyNameInput.text;
 
@@ -38,33 +38,22 @@ public class CreateLobbyUI : MonoBehaviour
         {
             Debug.LogWarning("No puedes crear una sala con más de 10 jugadores.");
             maxPlayersWarning.SetActive(true);
-            return; // IMPORTANTE: NO crear lobby
+            return; 
         }
         else
         {
             maxPlayersWarning.SetActive(false);
         }
 
-        PhotonManager._PhotonManager.CreateCustomLobby(lobbyName, maxPlayers);
-    }
 
+        bool created = await PhotonManager._PhotonManager
+            .CreateCustomLobby(lobbyName, maxPlayers);
 
-    public void SetInfo(SessionInfo sessionInfo)
-    {
-        sessionName.text = sessionInfo.Name;
-        playerCount.text = sessionInfo.PlayerCount.ToString()
-            + "/" +
-            sessionInfo.MaxPlayers.ToString();
-
-        if (sessionInfo.PlayerCount >= sessionInfo.MaxPlayers)
+        if (created)
         {
-            joinButton.interactable = false;
+            canvas1.SetActive(false);
+            canvas2.SetActive(false);
         }
-    }
-
-    public void JoinSession()
-    {
-        PhotonManager._PhotonManager.JoinSession(sessionName.text);
     }
 
 }
