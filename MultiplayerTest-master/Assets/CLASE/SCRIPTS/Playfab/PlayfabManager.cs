@@ -35,6 +35,14 @@ public class PlayfabManager : MonoBehaviour
         }
     }
 
+    // cuando esten los datos, presiono P
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.P))
+        {
+            GetPlayerData();
+        }
+    }
     /// <summary>
     /// Este metodo es el que va a ir en el boton registrar usuario
     /// </summary>
@@ -104,6 +112,57 @@ public class PlayfabManager : MonoBehaviour
         PlayFabClientAPI.LoginWithPlayFab(request, resultCallback => taskSource.SetResult(resultCallback), errorCallback => taskSource.SetException(new System.Exception(errorCallback.GenerateErrorReport())));
 
         return await taskSource.Task;
+    }
+
+    // Metodo para subir datos al playfab
+    public void UploadPlayerData()
+    {
+        var request = new PlayFab.ClientModels.UpdateUserDataRequest()
+        {
+            Data = new System.Collections.Generic.Dictionary<string, string>()
+        {
+            {"PlayerTitle", playerTitle},
+            {"PlayerLevel", playerLevel.ToString()},
+            {"PlayerHealth", playerHealth.ToString()}
+        }
+        };
+
+        PlayFabClientAPI.UpdateUserData(request,
+            result =>
+            {
+                Debug.Log("Datos subidos correctamente a PlayFab");
+            },
+            error =>
+            {
+                Debug.LogError(error.GenerateErrorReport());
+            });
+    }
+
+    // Metodo para obtener datos al playfab
+    public void GetPlayerData()
+    {
+        PlayFabClientAPI.GetUserData(new GetUserDataRequest(),
+            result =>
+            {
+                if (result.Data != null)
+                {
+                    string title = result.Data["PlayerTitle"].Value;
+                    int level = int.Parse(result.Data["PlayerLevel"].Value);
+                    float health = float.Parse(result.Data["PlayerHealth"].Value);
+
+                    Debug.Log("PlayerTitle: " + title);
+                    Debug.Log("PlayerLevel: " + level);
+                    Debug.Log("PlayerHealth: " + health);
+                }
+                else
+                {
+                    Debug.Log("No hay datos guardados.");
+                }
+            },
+            error =>
+            {
+                Debug.LogError(error.GenerateErrorReport());
+            });
     }
 
 }
