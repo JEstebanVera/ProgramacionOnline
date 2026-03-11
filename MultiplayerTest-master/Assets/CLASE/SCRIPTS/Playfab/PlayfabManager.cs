@@ -10,7 +10,7 @@ using PlayFab.CloudScriptModels;
 
 public class PlayfabManager : MonoBehaviour
 {
-
+    [SerializeField] private TMP_InputField emailInput;
     [SerializeField] private TMP_InputField usernameInput;
     [SerializeField] private TMP_InputField passwordInput;
 
@@ -51,7 +51,7 @@ public class PlayfabManager : MonoBehaviour
         try
         {
             var result = await RegisterPlayfabAccount();
-            Debug.Log("");
+            Debug.Log("Usuario registrado correctamente");
         }
         catch (Exception error) 
         {
@@ -73,6 +73,7 @@ public class PlayfabManager : MonoBehaviour
             Username = usernameInput.text.ToLower(),
             DisplayName = usernameInput.text,
             Password = passwordInput.text,
+            Email = emailInput.text,
         };
 
         // Descubrir como deben realizar la llamada a la API para que se pueda poner un await
