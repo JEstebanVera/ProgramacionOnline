@@ -7,6 +7,7 @@ using System.Collections;
 using System;
 using PlayFab.AuthenticationModels;
 using PlayFab.CloudScriptModels;
+using System.Collections.Generic;
 
 public class PlayfabManager : MonoBehaviour
 {
@@ -20,6 +21,23 @@ public class PlayfabManager : MonoBehaviour
     [SerializeField] private string playerTitle;
     [SerializeField] private int playerLevel;
     [SerializeField] private float playerHealth;
+
+    //Esto hace que funcione lo de las skins
+    public Dictionary<string, UserDataRecord> playerData { get; private set; }
+
+    public static PlayfabManager _PlayfabManager;
+
+    private void Awake()
+    {
+        if (_PlayfabManager == null)
+        {
+            _PlayfabManager = this;
+        }
+        else
+        {
+            Destroy(this.gameObject);
+        }
+    }
 
     private void Start()
     {
@@ -140,30 +158,71 @@ public class PlayfabManager : MonoBehaviour
     }
 
     // Metodo para obtener datos al playfab
-    public void GetPlayerData()
+    public async void GetPlayerData(Action[] postGetUserDataCalls = null)
     {
-        PlayFabClientAPI.GetUserData(new GetUserDataRequest(),
-            result =>
-            {
-                if (result.Data != null)
-                {
-                    string title = result.Data["PlayerTitle"].Value;
-                    int level = int.Parse(result.Data["PlayerLevel"].Value);
-                    float health = float.Parse(result.Data["PlayerHealth"].Value);
+        try
+        {
+            var result = await GetData();
+            playerData = result.Data;
 
-                    Debug.Log("PlayerTitle: " + title);
-                    Debug.Log("PlayerLevel: " + level);
-                    Debug.Log("PlayerHealth: " + health);
-                }
-                else
-                {
-                    Debug.Log("No hay datos guardados.");
-                }
-            },
-            error =>
+            // Esto permite que no truene si no mandas nada
+            if (postGetUserDataCalls != null)
             {
-                Debug.LogError(error.GenerateErrorReport());
-            });
+                foreach (var call in postGetUserDataCalls)
+                {
+                    call();
+                }
+            }
+
+            //  DEBUG (tecla P)
+            if (playerData != null)
+            {
+                if (playerData.ContainsKey("PlayerTitle"))
+                    Debug.Log("PlayerTitle: " + playerData["PlayerTitle"].Value);
+
+                if (playerData.ContainsKey("PlayerLevel"))
+                    Debug.Log("PlayerLevel: " + playerData["PlayerLevel"].Value);
+
+                if (playerData.ContainsKey("PlayerHealth"))
+                    Debug.Log("PlayerHealth: " + playerData["PlayerHealth"].Value);
+            }
+        }
+        catch (Exception error)
+        {
+            Debug.Log(error.Message);
+        }
+    }
+
+    public async Task<GetUserDataResult> GetData()
+    {
+        var taskSource = new TaskCompletionSource<GetUserDataResult>();
+
+        var request = new GetUserDataRequest();
+
+        PlayFabClientAPI.GetUserData(request,
+            resultCallback => taskSource.SetResult(resultCallback),
+            errorCallback => taskSource.SetException(new Exception(errorCallback.GenerateErrorReport()))
+        );
+
+        return await taskSource.Task;
+    }
+
+    public void UploadSkinData()
+    {
+        var request = new UpdateUserDataRequest()
+        {
+            Data = new Dictionary<string, string>()
+        {
+            {"Body", "0"},
+            {"Head", "1"},
+            {"Material", "2"}
+        }
+        };
+
+        PlayFabClientAPI.UpdateUserData(request,
+            result => Debug.Log("Skin guardada"),
+            error => Debug.LogError(error.GenerateErrorReport())
+        );
     }
 
 }
