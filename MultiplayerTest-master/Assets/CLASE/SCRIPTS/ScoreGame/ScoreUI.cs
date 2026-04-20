@@ -9,6 +9,8 @@ public class ScoreUI : MonoBehaviour
 
     private PlayerRef localPlayer;
 
+
+
     public void Initialize(NetworkRunner runner)
     {
         localPlayer = runner.LocalPlayer;
@@ -28,7 +30,7 @@ public class ScoreUI : MonoBehaviour
             myScoreText.text = "Yo: 0";
             Debug.Log("No se pudo obtener el puntaje");
         }
-            
+
 
         // Puntaje del rival 
         enemyScoreText.text = "Rival: 0";

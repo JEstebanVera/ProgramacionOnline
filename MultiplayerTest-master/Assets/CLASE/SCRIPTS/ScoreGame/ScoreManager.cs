@@ -35,7 +35,7 @@ public class ScoreManager : NetworkBehaviour
 
         Debug.Log($"Nuevo puntaje para {player}: {Scores.Get(player)}");
 
-        // VICTORIA 
+        // VICTORIA
         if (newScore >= 20)
         {
             OnPlayerWin?.Invoke(player);
@@ -55,7 +55,7 @@ public class ScoreManager : NetworkBehaviour
         Debug.Log($"Anunciando ganador: {name}");
 
         // Buscamos el componente VictoryUI en la escena local y le pedimos mostrar el canvas
-        var victory = UnityEngine.Object.FindObjectOfType<VictoryUI>();
+        var victory = VictoryUI.Instance;
         if (victory != null)
         {
             victory.ShowWinner(name);
@@ -64,6 +64,20 @@ public class ScoreManager : NetworkBehaviour
         {
             Debug.LogWarning("VictoryUI no encontrada en la escena. Agrega el prefab/canvas con VictoryUI.");
         }
+
+        // guarda si ganó o perdió para subirlo a playfab
+        var localPlayer = Runner.LocalPlayer;
+
+        if (winner == localPlayer)
+        {
+            PlayfabManager._PlayfabManager.totalVictories++;
+        }
+        else
+        {
+            PlayfabManager._PlayfabManager.totalDefeats++;
+        }
+
+        PlayfabManager._PlayfabManager.SaveStatistics();
     }
 
     private string GetPlayerDisplayName(PlayerRef p)

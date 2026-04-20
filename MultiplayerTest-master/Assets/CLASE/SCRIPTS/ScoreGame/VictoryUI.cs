@@ -13,8 +13,9 @@ public class VictoryUI : MonoBehaviour
     private void Awake()
     {
         Instance = this;
+
         if (canvasRoot != null)
-            canvasRoot.SetActive(false); // el canvas esté oculto al inicio
+            canvasRoot.SetActive(false);
     }
 
     /// <summary>

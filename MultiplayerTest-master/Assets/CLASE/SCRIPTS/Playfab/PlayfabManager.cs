@@ -11,16 +11,31 @@ using System.Collections.Generic;
 
 public class PlayfabManager : MonoBehaviour
 {
-    [SerializeField] private TMP_InputField emailInput;
-    [SerializeField] private TMP_InputField usernameInput;
-    [SerializeField] private TMP_InputField passwordInput;
+    [Header("Login Inputs")]
+    [SerializeField] private TMP_InputField loginUsernameInput;
+    [SerializeField] private TMP_InputField loginPasswordInput;
+
+    [Header("Register Inputs")]
+    [SerializeField] private TMP_InputField registerEmailInput;
+    [SerializeField] private TMP_InputField registerUsernameInput;
+    [SerializeField] private TMP_InputField registerPasswordInput;
 
     [SerializeField] private GameObject IniciarCanvas;
+    [SerializeField] private GameObject RegistrarCanvas;
 
     // Variables de 3 datos para la tarea
-    [SerializeField] private string playerTitle;
-    [SerializeField] private int playerLevel;
-    [SerializeField] private float playerHealth;
+    public int totalBalloons;
+    public int totalVictories;
+    public int totalDefeats;
+
+    private const string BALLOONS_KEY = "TotalBalloons";
+    private const string VICTORIES_KEY = "Victories";
+    private const string DEFEATS_KEY = "Defeats";
+
+    // para mostrar los datos en el canvas
+    [SerializeField] private TMP_Text balloonsText;
+    [SerializeField] private TMP_Text victoriesText;
+    [SerializeField] private TMP_Text defeatsText;
 
     //Esto hace que funcione lo de las skins
     public Dictionary<string, UserDataRecord> playerData { get; private set; }
@@ -68,8 +83,17 @@ public class PlayfabManager : MonoBehaviour
     {
         try
         {
-            var result = await RegisterPlayfabAccount();
+            await RegisterPlayfabAccount();
+
             Debug.Log("Usuario registrado correctamente");
+
+            // Auto login usando los datos de registro
+            loginUsernameInput.text = registerUsernameInput.text;
+            loginPasswordInput.text = registerPasswordInput.text;
+
+            await LoginWithPlayfab();
+
+            RegistrarCanvas.SetActive(false);
         }
         catch (Exception error) 
         {
@@ -88,10 +112,10 @@ public class PlayfabManager : MonoBehaviour
 
         RegisterPlayFabUserRequest request = new RegisterPlayFabUserRequest()
         {
-            Username = usernameInput.text.ToLower(),
-            DisplayName = usernameInput.text,
-            Password = passwordInput.text,
-            Email = emailInput.text,
+            Username = registerUsernameInput.text.ToLower(),
+            DisplayName = registerUsernameInput.text,
+            Password = registerPasswordInput.text,
+            Email = registerEmailInput.text,
         };
 
         // Descubrir como deben realizar la llamada a la API para que se pueda poner un await
@@ -110,6 +134,9 @@ public class PlayfabManager : MonoBehaviour
 
             // cerrar el panel solo si login fue exitoso
             IniciarCanvas.SetActive(false);
+
+            // Cargar estadísticas después del login
+            await LoadStatistics();
         }
         catch(Exception error)  
         {
@@ -123,8 +150,8 @@ public class PlayfabManager : MonoBehaviour
 
         LoginWithPlayFabRequest request = new LoginWithPlayFabRequest()
         {
-            Username = usernameInput.text.ToLower(),
-            Password = passwordInput.text,
+            Username = loginUsernameInput.text.ToLower(),
+            Password = loginPasswordInput.text,
         };
 
         // Descubrir como deben realizar la llamada a la API para que se pueda poner un await
@@ -133,28 +160,57 @@ public class PlayfabManager : MonoBehaviour
         return await taskSource.Task;
     }
 
-    // Metodo para subir datos al playfab
-    public void UploadPlayerData()
+    // Metodo para cargar datos al playfab
+    public async Task LoadStatistics()
     {
-        var request = new PlayFab.ClientModels.UpdateUserDataRequest()
+        var result = await GetData();
+
+        playerData = result.Data;
+
+        if (playerData != null)
         {
-            Data = new System.Collections.Generic.Dictionary<string, string>()
+            if (playerData.ContainsKey(BALLOONS_KEY))
+                totalBalloons = int.Parse(playerData[BALLOONS_KEY].Value);
+
+            if (playerData.ContainsKey(VICTORIES_KEY))
+                totalVictories = int.Parse(playerData[VICTORIES_KEY].Value);
+
+            if (playerData.ContainsKey(DEFEATS_KEY))
+                totalDefeats = int.Parse(playerData[DEFEATS_KEY].Value);
+        }
+
+        UpdateStatsUI();
+    }
+
+    private void UpdateStatsUI()
+    {
+        if (balloonsText != null)
+            balloonsText.text = $"Globos: {totalBalloons}";
+
+        if (victoriesText != null)
+            victoriesText.text = $"Victorias: {totalVictories}";
+
+        if (defeatsText != null)
+            defeatsText.text = $"Derrotas: {totalDefeats}";
+    }
+
+    // método para guardar los datos al playfab
+    public void SaveStatistics()
+    {
+        var request = new UpdateUserDataRequest()
         {
-            {"PlayerTitle", playerTitle},
-            {"PlayerLevel", playerLevel.ToString()},
-            {"PlayerHealth", playerHealth.ToString()}
+            Data = new Dictionary<string, string>()
+        {
+            {BALLOONS_KEY, totalBalloons.ToString()},
+            {VICTORIES_KEY, totalVictories.ToString()},
+            {DEFEATS_KEY, totalDefeats.ToString()}
         }
         };
 
         PlayFabClientAPI.UpdateUserData(request,
-            result =>
-            {
-                Debug.Log("Datos subidos correctamente a PlayFab");
-            },
-            error =>
-            {
-                Debug.LogError(error.GenerateErrorReport());
-            });
+            result => Debug.Log("Estadísticas guardadas"),
+            error => Debug.LogError(error.GenerateErrorReport())
+        );
     }
 
     // Metodo para obtener datos al playfab
