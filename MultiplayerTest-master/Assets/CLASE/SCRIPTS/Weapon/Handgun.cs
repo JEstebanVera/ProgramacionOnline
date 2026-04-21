@@ -42,7 +42,7 @@ public class Handgun : Weapon
     private void RpcPhysicShoot(Vector3 pos, Quaternion rot, RpcInfo info = default)
     {
         // Este PlayerRef convierte al player none (el host) a un local player
-        PlayerRef shooter = info.Source.IsNone ? Runner.LocalPlayer : info.Source;
+        PlayerRef shooter = info.Source;
         Debug.Log($"Disparo de {shooter}");
         if (bullet.IsValid)
         {

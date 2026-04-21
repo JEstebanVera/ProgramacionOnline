@@ -68,14 +68,6 @@ public class PlayfabManager : MonoBehaviour
         }
     }
 
-    // cuando esten los datos, presiono P
-    void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.P))
-        {
-            GetPlayerData();
-        }
-    }
     /// <summary>
     /// Este metodo es el que va a ir en el boton registrar usuario
     /// </summary>
@@ -161,6 +153,7 @@ public class PlayfabManager : MonoBehaviour
     }
 
     // Metodo para cargar datos al playfab
+
     public async Task LoadStatistics()
     {
         var result = await GetData();
@@ -192,6 +185,21 @@ public class PlayfabManager : MonoBehaviour
 
         if (defeatsText != null)
             defeatsText.text = $"Derrotas: {totalDefeats}";
+    }
+
+    // Modificamos la firma para recibir el puntaje real del servidor
+    public void EndMatch(bool iWon, int balloonsFromNetwork)
+    {
+        // usamos lo que el ScoreManager contó en red
+        totalBalloons += balloonsFromNetwork;
+
+        if (iWon)
+            totalVictories++;
+        else
+            totalDefeats++;
+
+        SaveStatistics();
+
     }
 
     // método para guardar los datos al playfab

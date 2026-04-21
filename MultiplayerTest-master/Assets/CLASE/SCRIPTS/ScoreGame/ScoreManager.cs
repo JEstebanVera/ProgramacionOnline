@@ -6,86 +6,61 @@ public class ScoreManager : NetworkBehaviour
     public static ScoreManager Instance;
 
     [Networked]
-    public NetworkDictionary<PlayerRef, int> Scores => default;
+    public NetworkDictionary<PlayerRef, int> Scores { get; }
 
     public event System.Action<PlayerRef> OnPlayerWin;
 
     public override void Spawned()
     {
         Instance = this;
-        Debug.Log("ScoreManager Spawned correctamente.");
+        Debug.Log("Spawned ScoreManager - IsServer: " + Runner.IsServer);
     }
 
-    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+    [Rpc(RpcSources.StateAuthority, RpcTargets.StateAuthority)]
     public void Rpc_AddScore(PlayerRef player, int points)
     {
-        int newScore = 0;
+        if (!HasStateAuthority)
+            return;
 
-        if (!Scores.ContainsKey(player))
-        {
-            Scores.Set(player, points);
-            newScore = points;
-        }
-        else
-        {
-            int current = Scores.Get(player);
-            Scores.Set(player, current + points);
-            newScore = current + points;
-        }
+        int current = 0;
 
-        Debug.Log($"Nuevo puntaje para {player}: {Scores.Get(player)}");
+        if (Scores.ContainsKey(player))
+            current = Scores.Get(player);
 
-        // VICTORIA
+        int newScore = current + points;
+        Scores.Set(player, newScore);
+
         if (newScore >= 20)
         {
-            OnPlayerWin?.Invoke(player);
-
-            // Anunciamos a todos los clientes quién ganó
-            // Llamada desde la StateAuthority a todos los clientes
             Rpc_AnnounceWinner(player);
         }
     }
 
-    // RPC para anunciar el ganador a TODOS los clientes (incluido el servidor)
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    public void Rpc_AnnounceWinner(PlayerRef winner, RpcInfo info = default)
+[Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+private void Rpc_AnnounceWinner(PlayerRef winner)
+{
+    var victory = VictoryUI.Instance;
+    if (victory != null)
     {
-        string name = GetPlayerDisplayName(winner);
-
-        Debug.Log($"Anunciando ganador: {name}");
-
-        // Buscamos el componente VictoryUI en la escena local y le pedimos mostrar el canvas
-        var victory = VictoryUI.Instance;
-        if (victory != null)
-        {
-            victory.ShowWinner(name);
-        }
-        else
-        {
-            Debug.LogWarning("VictoryUI no encontrada en la escena. Agrega el prefab/canvas con VictoryUI.");
-        }
-
-        // guarda si ganó o perdió para subirlo a playfab
-        var localPlayer = Runner.LocalPlayer;
-
-        if (winner == localPlayer)
-        {
-            PlayfabManager._PlayfabManager.totalVictories++;
-        }
-        else
-        {
-            PlayfabManager._PlayfabManager.totalDefeats++;
-        }
-
-        PlayfabManager._PlayfabManager.SaveStatistics();
+        // Usamos el ID para evitar nulos si no hay sistema de nombres
+        victory.ShowWinner($"Jugador {winner.PlayerId}");
     }
+
+    // OBTENER PUNTAJE REAL DESDE EL SERVER
+    int totalMatchScore = 0;
+    if (Scores.ContainsKey(Runner.LocalPlayer))
+    {
+        totalMatchScore = Scores.Get(Runner.LocalPlayer);
+    }
+
+    bool iWon = Runner.LocalPlayer == winner;
+
+    // Enviamos el puntaje real que el servidor registró para este jugador
+    PlayfabManager._PlayfabManager.EndMatch(iWon, totalMatchScore);
+}
 
     private string GetPlayerDisplayName(PlayerRef p)
     {
-        // Usar IsNone para detectar jugador "none"/host
-        if (p.IsNone)
-            return "Host";
-
         return $"Jugador {p.PlayerId}";
     }
 }

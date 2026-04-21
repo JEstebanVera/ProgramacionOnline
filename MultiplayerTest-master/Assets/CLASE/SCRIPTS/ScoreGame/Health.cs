@@ -29,28 +29,13 @@ public class Health : NetworkBehaviour
         }
     }
 
-    private async void OnDeath(PlayerRef shooter)
+    private void OnDeath(PlayerRef shooter)
     {
-        // Esperar hasta que ScoreManager aparezca pq si no no jala
-        int timeout = 0;
-        while (ScoreManager.Instance == null && timeout < 50)
-        {
-            await Task.Delay(50);
-            timeout++;
-        }
-
-        if (ScoreManager.Instance == null)
-        {
-            Debug.LogError("ScoreManager sigue siendo NULL después de esperar. Algo está mal.");
+        if (!HasStateAuthority)
             return;
-        }
 
-        Debug.Log("ScoreManager listo, sumando puntos...");
-
-        // Llamar al RPC del servidor
         ScoreManager.Instance.Rpc_AddScore(shooter, 1);
 
-        // el evento OnDeath que usa balloon
         OnDeathEvent?.Invoke(shooter);
     }
 

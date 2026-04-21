@@ -9,38 +9,33 @@ public class ScoreUI : MonoBehaviour
 
     private PlayerRef localPlayer;
 
-
-
-    public void Initialize(NetworkRunner runner)
+    private void Start()
     {
-        localPlayer = runner.LocalPlayer;
+        localPlayer = FindFirstObjectByType<NetworkRunner>().LocalPlayer;
     }
 
-    private void Update()
+    private void LateUpdate()
     {
-        if (ScoreManager.Instance == null) return;
+        if (ScoreManager.Instance == null)
+            return;
 
         var scores = ScoreManager.Instance.Scores;
 
-        // Mi puntaje
-        if (scores.TryGet(localPlayer, out int myScore))
-            myScoreText.text = $"Yo: {myScore}";
-        else
-        {
-            myScoreText.text = "Yo: 0";
-            Debug.Log("No se pudo obtener el puntaje");
-        }
+        int myScore = 0;
+        scores.TryGet(localPlayer, out myScore);
+        myScoreText.text = $"Yo: {myScore}";
 
+        int enemyScore = 0;
 
-        // Puntaje del rival 
-        enemyScoreText.text = "Rival: 0";
         foreach (var kvp in scores)
         {
             if (kvp.Key != localPlayer)
             {
-                enemyScoreText.text = $"Rival: {kvp.Value}";
+                enemyScore = kvp.Value;
                 break;
             }
         }
+
+        enemyScoreText.text = $"Rival: {enemyScore}";
     }
 }
