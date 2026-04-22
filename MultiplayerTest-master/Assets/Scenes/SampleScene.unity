@@ -14735,6 +14735,10 @@ PrefabInstance:
       value: 1762791137
       objectReference: {fileID: 0}
     - target: {fileID: 5338772796990175591, guid: e75350187bf320943948b5ac6bca7929, type: 3}
+      propertyPath: canvasRoot
+      value: 
+      objectReference: {fileID: 7958909}
+    - target: {fileID: 5338772796990175591, guid: e75350187bf320943948b5ac6bca7929, type: 3}
       propertyPath: myScoreText
       value: 
       objectReference: {fileID: 345336176}

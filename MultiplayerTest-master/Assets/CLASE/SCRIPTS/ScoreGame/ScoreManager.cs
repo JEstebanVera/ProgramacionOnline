@@ -14,6 +14,23 @@ public class ScoreManager : NetworkBehaviour
     {
         Instance = this;
         Debug.Log("Spawned ScoreManager - IsServer: " + Runner.IsServer);
+
+        // Activar ScoreUI para TODOS (host y client) cuando el ScoreManager spawnea.
+        Rpc_ActivateScoreUI();
+    }
+
+    // activa el ScoreUI en todos los clientes
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_ActivateScoreUI()
+    {
+        if (ScoreUI.Instance != null)
+        {
+            ScoreUI.Instance.Activate();
+        }
+        else
+        {
+            Debug.LogWarning("ScoreUI.Instance es null cuando ScoreManager intentó activarlo.");
+        }
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.StateAuthority)]
@@ -23,7 +40,6 @@ public class ScoreManager : NetworkBehaviour
             return;
 
         int current = 0;
-
         if (Scores.ContainsKey(player))
             current = Scores.Get(player);
 
@@ -36,31 +52,26 @@ public class ScoreManager : NetworkBehaviour
         }
     }
 
-[Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-private void Rpc_AnnounceWinner(PlayerRef winner)
-{
-    var victory = VictoryUI.Instance;
-    if (victory != null)
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_AnnounceWinner(PlayerRef winner)
     {
-        // Usamos el ID para evitar nulos si no hay sistema de nombres
-        victory.ShowWinner($"Jugador {winner.PlayerId}");
-    }
+        // Mostrar VictoryUI
+        var victory = VictoryUI.Instance;
+        if (victory != null)
+        {
+            victory.ShowWinner($"Jugador {winner.PlayerId}");
+        }
 
-    // OBTENER PUNTAJE REAL DESDE EL SERVER
-    int totalMatchScore = 0;
-    if (Scores.ContainsKey(Runner.LocalPlayer))
-    {
-        totalMatchScore = Scores.Get(Runner.LocalPlayer);
-    }
+        // Obtener el puntaje real de ESTE cliente local desde el NetworkDictionary
+        int totalMatchScore = 0;
+        if (Scores.ContainsKey(Runner.LocalPlayer))
+        {
+            totalMatchScore = Scores.Get(Runner.LocalPlayer);
+        }
 
-    bool iWon = Runner.LocalPlayer == winner;
+        bool iWon = Runner.LocalPlayer == winner;
 
-    // Enviamos el puntaje real que el servidor registró para este jugador
-    PlayfabManager._PlayfabManager.EndMatch(iWon, totalMatchScore);
-}
-
-    private string GetPlayerDisplayName(PlayerRef p)
-    {
-        return $"Jugador {p.PlayerId}";
+        // Llamar EndMatch con el puntaje correcto de este cliente
+        PlayfabManager._PlayfabManager.EndMatch(iWon, totalMatchScore);
     }
 }

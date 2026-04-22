@@ -187,19 +187,34 @@ public class PlayfabManager : MonoBehaviour
             defeatsText.text = $"Derrotas: {totalDefeats}";
     }
 
-    // Modificamos la firma para recibir el puntaje real del servidor
-    public void EndMatch(bool iWon, int balloonsFromNetwork)
+    // EndMatch ahora recarga los datos frescos de PlayFab ANTES de sumar,
+    // para evitar sobreescribir con valores locales desactualizados.
+    public async void EndMatch(bool iWon, int balloonsFromNetwork)
     {
-        // usamos lo que el ScoreManager contó en red
-        totalBalloons += balloonsFromNetwork;
+        try
+        {
+            // Recargar datos actualizados desde PlayFab antes de modificar
+            await LoadStatistics();
 
-        if (iWon)
-            totalVictories++;
-        else
-            totalDefeats++;
+            // Sumar sobre los datos frescos
+            totalBalloons += balloonsFromNetwork;
 
-        SaveStatistics();
+            if (iWon)
+                totalVictories++;
+            else
+                totalDefeats++;
 
+            SaveStatistics();
+
+            // Refrescar la UI con los nuevos valores
+            UpdateStatsUI();
+
+            Debug.Log($"EndMatch guardado — Globos: {totalBalloons}, Victorias: {totalVictories}, Derrotas: {totalDefeats}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError("EndMatch falló: " + e.Message);
+        }
     }
 
     // método para guardar los datos al playfab

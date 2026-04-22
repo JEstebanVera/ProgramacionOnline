@@ -4,19 +4,56 @@ using TMPro;
 
 public class ScoreUI : MonoBehaviour
 {
+    // Singleton para que ScoreManager pueda encontrarlo fácilmente (espero)
+    public static ScoreUI Instance;
+
     [SerializeField] private TMP_Text myScoreText;
     [SerializeField] private TMP_Text enemyScoreText;
 
-    private PlayerRef localPlayer;
+    // El canvas raíz del ScoreUI (Se llama JuegoCanvas)
+    [SerializeField] private GameObject canvasRoot;
 
-    private void Start()
+    private PlayerRef localPlayer;
+    private bool isReady = false;
+
+    private void Awake()
     {
-        localPlayer = FindFirstObjectByType<NetworkRunner>().LocalPlayer;
+        Instance = this;
+
+        // Va a estar apagado al principio
+        if (canvasRoot != null)
+            canvasRoot.SetActive(false);
+    }
+
+    /// <summary>
+    /// Llamado por ScoreManager vía RPC en todos los clientes.
+    /// Obtiene el LocalPlayer en este momento (cuando el runner ya está listo)
+    /// y activa el canvas.
+    /// </summary>
+    public void Activate()
+    {
+        var runner = FindFirstObjectByType<NetworkRunner>();
+        if (runner != null)
+        {
+            localPlayer = runner.LocalPlayer;
+            isReady = true;
+        }
+        else
+        {
+            Debug.LogError("ScoreUI.Activate: No se encontró NetworkRunner.");
+            return;
+        }
+
+        if (canvasRoot != null)
+            canvasRoot.SetActive(true);
+
+        Debug.Log($"ScoreUI activado para: {localPlayer}");
     }
 
     private void LateUpdate()
     {
-        if (ScoreManager.Instance == null)
+        // No procesar si todavía no estamos listos
+        if (!isReady || ScoreManager.Instance == null)
             return;
 
         var scores = ScoreManager.Instance.Scores;
@@ -26,7 +63,6 @@ public class ScoreUI : MonoBehaviour
         myScoreText.text = $"Yo: {myScore}";
 
         int enemyScore = 0;
-
         foreach (var kvp in scores)
         {
             if (kvp.Key != localPlayer)
@@ -35,7 +71,6 @@ public class ScoreUI : MonoBehaviour
                 break;
             }
         }
-
         enemyScoreText.text = $"Rival: {enemyScore}";
     }
 }
