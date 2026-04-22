@@ -4,13 +4,10 @@ using TMPro;
 
 public class ScoreUI : MonoBehaviour
 {
-    // Singleton para que ScoreManager pueda encontrarlo fácilmente (espero)
     public static ScoreUI Instance;
 
     [SerializeField] private TMP_Text myScoreText;
     [SerializeField] private TMP_Text enemyScoreText;
-
-    // El canvas raíz del ScoreUI (Se llama JuegoCanvas)
     [SerializeField] private GameObject canvasRoot;
 
     private PlayerRef localPlayer;
@@ -19,49 +16,74 @@ public class ScoreUI : MonoBehaviour
     private void Awake()
     {
         Instance = this;
-
-        // Va a estar apagado al principio
         if (canvasRoot != null)
             canvasRoot.SetActive(false);
     }
 
-    /// <summary>
-    /// Llamado por ScoreManager vía RPC en todos los clientes.
-    /// Obtiene el LocalPlayer en este momento (cuando el runner ya está listo)
-    /// y activa el canvas.
-    /// </summary>
     public void Activate()
     {
+        // Buscar el runner y obtener LocalPlayer
         var runner = FindFirstObjectByType<NetworkRunner>();
-        if (runner != null)
-        {
-            localPlayer = runner.LocalPlayer;
-            isReady = true;
-        }
-        else
+        if (runner == null)
         {
             Debug.LogError("ScoreUI.Activate: No se encontró NetworkRunner.");
             return;
         }
 
+        localPlayer = runner.LocalPlayer;
+
+        // Validar que LocalPlayer es válido (no None)
+        if (localPlayer == PlayerRef.None)
+        {
+            Debug.LogWarning("ScoreUI.Activate: LocalPlayer es None, reintentando...");
+            RetryActivate(runner);
+            return;
+        }
+
+        isReady = true;
+
         if (canvasRoot != null)
             canvasRoot.SetActive(true);
 
-        Debug.Log($"ScoreUI activado para: {localPlayer}");
+        Debug.Log($"ScoreUI activado para LocalPlayer: {localPlayer.PlayerId}");
+    }
+
+    private async void RetryActivate(NetworkRunner runner)
+    {
+        for (int i = 0; i < 10; i++)
+        {
+            await System.Threading.Tasks.Task.Delay(300);
+
+            if (runner == null) return;
+
+            localPlayer = runner.LocalPlayer;
+
+            if (localPlayer != PlayerRef.None)
+            {
+                isReady = true;
+                if (canvasRoot != null)
+                    canvasRoot.SetActive(true);
+
+                Debug.Log($"ScoreUI activado (retry) para LocalPlayer: {localPlayer.PlayerId}");
+                return;
+            }
+        }
+
+        Debug.LogError("ScoreUI: LocalPlayer nunca fue válido.");
     }
 
     private void LateUpdate()
     {
-        // No procesar si todavía no estamos listos
-        if (!isReady || ScoreManager.Instance == null)
-            return;
+        if (!isReady || ScoreManager.Instance == null) return;
 
         var scores = ScoreManager.Instance.Scores;
 
+        // Mi score
         int myScore = 0;
         scores.TryGet(localPlayer, out myScore);
         myScoreText.text = $"Yo: {myScore}";
 
+        // Score del rival (cualquier player que NO sea yo)
         int enemyScore = 0;
         foreach (var kvp in scores)
         {

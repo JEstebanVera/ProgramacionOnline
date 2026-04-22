@@ -5,9 +5,11 @@ public class WeaponHandler : NetworkBehaviour
 {
     [SerializeField] Weapon actualWeapon;
 
-
     public override void FixedUpdateNetwork()
     {
+        // Solo el dueño del input dispara
+        if (!HasInputAuthority) return;
+
         if (GetInput(out NetworkInputData input))
         {
             if (input.shoot)
@@ -16,5 +18,4 @@ public class WeaponHandler : NetworkBehaviour
             }
         }
     }
-
 }

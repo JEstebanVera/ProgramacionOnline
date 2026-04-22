@@ -3,27 +3,19 @@ using UnityEngine;
 
 public class Handgun : Weapon
 {
-    /// <summary>
-    /// Un RPC es un protocolo para mandar a llamar un metodo en diferentes clientes
-    /// 
-    /// RpcSources es quien lo manda a llamar
-    /// Rpctargets es quien lo ejecuta
-    /// </summary>
-
     [Rpc(RpcSources.InputAuthority, RpcTargets.All)]
     public override void RpcRaycastShoot(RpcInfo info = default)
     {
-        if (Physics.Raycast(PlayerCam.transform.position, PlayerCam.transform.forward, out RaycastHit hit, range, layerMask))
-        {
-            Debug.Log(hit.collider.name);
+        // Fix: info.Source es None cuando el host se llama a sí mismo
+        PlayerRef shooter = info.Source.IsNone ? Object.InputAuthority : info.Source;
 
-            if(hit.collider.TryGetComponent(out Health health))
+        if (Physics.Raycast(PlayerCam.transform.position, PlayerCam.transform.forward,
+                            out RaycastHit hit, range, layerMask))
+        {
+            Debug.Log($"Hit: {hit.collider.name} | Shooter: {shooter}");
+            if (hit.collider.TryGetComponent(out Health health))
             {
-                health.Rpc_TakeDamage(damage, info.Source);
-            }
-            else
-            {
-                // agujero de bala
+                health.Rpc_TakeDamage(damage, shooter);
             }
         }
     }
@@ -33,20 +25,17 @@ public class Handgun : Weapon
         RpcPhysicShoot(shootPoint.position, shootPoint.rotation);
     }
 
-    /// <summary>
-    /// El de arriba es el cliente, el de abajo el host
-    /// </summary>
-
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-
     private void RpcPhysicShoot(Vector3 pos, Quaternion rot, RpcInfo info = default)
     {
-        // Este PlayerRef convierte al player none (el host) a un local player
-        PlayerRef shooter = info.Source;
-        Debug.Log($"Disparo de {shooter}");
+        // Fix: info.Source es None cuando el host se llama a sí mismo
+        PlayerRef shooter = info.Source.IsNone ? Object.InputAuthority : info.Source;
+
+        Debug.Log($"Disparo de {shooter.PlayerId}");
+
         if (bullet.IsValid)
         {
-            NetworkObject bulletInstance = Runner.Spawn(bullet, pos, rot, shooter);
+            Runner.Spawn(bullet, pos, rot, shooter);
         }
     }
 
@@ -55,4 +44,8 @@ public class Handgun : Weapon
         Gizmos.color = Color.red;
         Gizmos.DrawRay(PlayerCam.transform.position, PlayerCam.transform.forward * range);
     }
+
 }
+
+
+

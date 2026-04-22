@@ -14,6 +14,11 @@ public class VictoryUI : MonoBehaviour
     {
         Instance = this;
 
+        if(canvasRoot != null )
+        {
+            canvasRoot.SetActive(false);
+        }
+
     }
 
     /// <summary>

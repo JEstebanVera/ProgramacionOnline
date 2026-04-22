@@ -68,14 +68,20 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
     /// </summary>
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
-        if (runner.IsServer) // Unicamente la persona que tiene el host va a mandar a llamar este metodo. Esto es para que no haya instancias de mas
+        if (runner.IsServer)
         {
-            int randomSpawn = UnityEngine.Random.Range(0, spawnPoint.Length); // Consigo un spawn random de mi arreglo
-            NetworkObject networkPlayer = runner.Spawn(prefab, spawnPoint[randomSpawn].position, spawnPoint[randomSpawn].rotation, player);
-            players.Add(player, networkPlayer); // Agregamos al diccionario el id de el jugador y lo vinculamos con su prefab que acaba de instanciarse
-        }
-        onPlayerJoinedToGame.Invoke(); // Invoca mi evento // Esto se pone afuera de el if para que a todo jugador que entre se le apague el canvas
+            int randomSpawn = UnityEngine.Random.Range(0, spawnPoint.Length);
+            NetworkObject networkPlayer = runner.Spawn(
+                prefab,
+                spawnPoint[randomSpawn].position,
+                spawnPoint[randomSpawn].rotation,
+                player  //Esto asigna InputAuthority correctamente
+            );
+            players.Add(player, networkPlayer);
 
+            Debug.Log($"Spawneado jugador: {player.PlayerId} con InputAuthority: {networkPlayer.InputAuthority}");
+        }
+        onPlayerJoinedToGame.Invoke();
     }
 
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
